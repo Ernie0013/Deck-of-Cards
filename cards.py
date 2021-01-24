@@ -1,5 +1,9 @@
 import random
 from discord import Client
+from discord import Embed
+from discord import Member
+from discord import TextChannel
+from discord import User
 
 client = Client()
 
@@ -86,15 +90,149 @@ class Card:
     emoji = cardEmoji[self.suit][self.value]    
     return emoji
 
-class Deck:
-  def __init__(self):
-    self.cards = []
-    self.add_deck()
+  def get_embed(self, member: Member, channel: TextChannel):
+    cardDict = {
+      "title": member.display_name + " plays the following card:",
+      "type": "rich",
+      "description": str(self),
+      "color": 0x008000,
+      "footer": {
+        "text": channel.id if channel is not None else ''
+      }
+    }
+    return Embed.from_dict(cardDict)
 
-  def add_deck(self):
-    for suit in cardSuits:
-      for value in cardValues:
-        self.cards.append(Card(suit, value))
+  def get_blank_card_embed(user: User, channel: TextChannel):
+    cardDict = {
+      "title": user.display_name + " plays the following card:",
+      "type": "rich",
+      "description": Deck.get_blank_card(),
+      "color": 0x008000,
+      "footer": {
+        "text": channel.id if channel is not None else ''
+      }
+    }
+    return Embed.from_dict(cardDict)
+
+  def get_cat_embed(user: User, channel: TextChannel):
+    cardDict = {
+      "title": user.display_name + " plays the following card:",
+      "type": "rich",
+      "description": Deck.get_cat_card(),
+      "color": 0x008000,
+      "footer": {
+        "text": channel.id if channel is not None else ''
+      }
+    }
+    return Embed.from_dict(cardDict)
+    
+class Hand:
+  def __init__(self, owner: Member, cards: []):
+    self.owner = owner
+    self.cards = cards
+
+  def __str__(self):
+    if self.cards is None or len(self.cards) == 0:
+      return 'No cards in hand'
+    else:
+      handString = ''
+      for i in range(len(self.cards)):
+        card = self.cards[i]
+        handString = handString + str(i + 1) + str(card)
+      return handString
+
+  def __len__(self):
+    if self.cards is None:
+      return 0
+    else:
+      return len(self.cards)
+
+  def append(self, card: Card):
+    if self.cards is None:
+      self.cards = []
+    self.cards.append(card)
+
+  def get_embed(self, channel: TextChannel):
+    handDict = {
+      "title": self.owner.display_name + "'s hand:",
+      "type": "rich",
+      "color": 0xFF9900 if self.cards is None or len(self.cards) == 0 else 0x008000,
+      "footer": {
+        "text": channel.id if channel is not None else ''
+      }
+    }
+    handDict['description'] = ''
+    if self.cards is not None:
+      for i in range(len(self.cards)):
+        card = self.cards[i]
+        handDict['description'] = handDict['description'] + str(card)
+    return Embed.from_dict(handDict)
+
+  def find_card_index(self, suit: str, value: str):
+    if len(self) == 0 or suit is None or suit == '' or value is None or value == '':
+      return
+    value = value.capitalize()
+    suit = suit.capitalize()
+
+    for i in range(len(self)):
+      card = self.cards[i]
+      if card.suit == suit and card.value == value:
+        return i
+
+    for i in range(len(self)):
+      card = self.cards[i]
+      if card.suit == value and card.value == suit:
+        return i
+    
+    if suit[-1] != 's':
+      suit = suit + 's'
+
+    for i in range(len(self)):
+      card = self.cards[i]
+      if card.suit == suit and card.value == value:
+        return i
+
+  def play_card_number(self, index: int):
+    card = self.cards.pop(index)
+    return card
+
+  def play_card(self, suit: str, value: str):
+    index = self.find_card_index(suit, value)
+    if index is not None:
+      return self.play_card_number(index)
+
+class Deck:
+  def __init__(self, decks_in_use = 1):
+    self.cards = []
+    self.decks_in_use = decks_in_use
+    self.add_deck(self.decks_in_use, False)
+
+  def add_deck(self, number = 1, increase_count = True):
+    for _ in range(number):
+      for suit in cardSuits:
+        for value in cardValues:
+          self.cards.append(Card(suit, value))
+      if increase_count:
+        self.decks_in_use = self.decks_in_use + 1
+
+  def remove_deck(self, number = 1):
+    for _ in range(number):
+      if self.decks_in_use > 1:
+        for suit in cardSuits:
+          for value in cardValues:
+            try:
+              self.cards.remove(Card(suit, value))
+            except:
+              continue
+        self.decks_in_use = self.decks_in_use - 1
+      else:
+        break
+
+  def reset(self, number: int = None):
+    if number is not None:
+      self.decks_in_use = number
+    self.cards = []
+    self.add_deck(self.decks_in_use, False)
 
   def number_of_cards_remaining(self):
     return len(self.cards)
@@ -103,6 +241,16 @@ class Deck:
     cardToPick = random.choice(self.cards)
     self.cards.remove(cardToPick)
     return cardToPick
+
+  def deal_hand(self, player: Member, number_of_cards: int):
+    cards = []
+    for i in range(number_of_cards):
+      cards.append(self.take_random_card_from_deck())
+    return Hand(player, cards)
+  
+  def deal_cards(self, hand: Hand, number_of_cards: int):
+    for i in range(number_of_cards):
+      hand.append(self.take_random_card_from_deck())
 
   def get_blank_card():
     return '<:blank:802649255524958281>'
