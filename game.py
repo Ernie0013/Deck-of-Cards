@@ -21,6 +21,7 @@ class Game:
     self.prefix = '$'
     self.hand_limit = 52
     self.number_of_decks = 1
+    self.played_cards = {}
 
   def get_user_hand(self, member: Member):
     if member.id in self.dealt_hands:
@@ -192,11 +193,11 @@ class Game:
         await Util.send_error_embed(message.channel, 'You have no hand, ask someone to deal you one')
         return
 
-      cardRegexSearch = re.search(rf'{re.escape(self.prefix)}play(?:-card)? (\w+) (of)? ?(\w+)', message.content)
-      numberText = re.search(rf'{re.escape(self.prefix)}play(?:-card)? (\d+)', message.content)
-
+      cardRegexSearch = re.search(rf'{re.escape(self.prefix)}play(?:-card)? (\w+) (of)? ?((?!facedown)\w+) ?(facedown)?', message.content)
+      numberText = re.search(rf'{re.escape(self.prefix)}play(?:-card)? (\d+) ?(facedown)?', message.content)
+      
       if cardRegexSearch is not None:
-        card = userHand.play_card(cardRegexSearch.group(1), cardRegexSearch.group(3)) if cardRegexSearch.group(2) is None else userHand.play_card(cardRegexSearch.group(3), cardRegexSearch.group(1))
+        card = userHand.play_card(cardRegexSearch.group(1), cardRegexSearch.group(3), cardRegexSearch.group(4) is not None) if cardRegexSearch.group(2) is None else userHand.play_card(cardRegexSearch.group(3), cardRegexSearch.group(1), cardRegexSearch.group(4) is not None)
         if card is None:
           await Util.send_error_embed(message.channel, 'Requested card not found in your hand')
           return
@@ -207,15 +208,32 @@ class Game:
           await Util.send_error_embed(message.channel, 'Not a valid number for the amount of cards your hand has')
           return
         else:
-          card = userHand.play_card_number(number)
+          card = userHand.play_card_number(number, numberText.group(2) is not None)
       else: # No number or card description given
         await Util.send_error_embed(message.channel, 'Please provide the number of the card you wish to play')
         return
       
       cardEmbed = card.get_embed(member, None)
-      await self.channel.send(embed = cardEmbed)
+      sentMessage = await self.channel.send(embed = cardEmbed)
+      self.played_cards[sentMessage.id] = card
       if self.channel != message.channel:
         await message.channel.send(f'You\'ve played the following card in {self.get_channel_name_and_guild()}', embed = cardEmbed)
+
+    ### Turn up facedown card
+    if message.content.startswith(self.prefix + 'turn-up') and isinstance(message.channel, TextChannel):
+      if not await self.check_dealer_role(message.author):
+        await Util.send_error_embed(message.channel, 'You are not the dealer')
+        return
+      if message.reference is None:
+        await Util.send_error_embed(message.channel, 'Please reply to the message containing the card to turn up')
+        return
+      if message.reference.message_id not in self.played_cards:
+        await Util.send_error_embed(message.channel, 'Message could not be found, make sure you\'re replying to a message containing a playing card')
+        return
+      
+      member = await self.channel.guild.fetch_member(message.author.id)
+      self.played_cards[message.reference.message_id].reveal()
+      await self.channel.send(embed = self.played_cards[message.reference.message_id].get_embed(member, None))
 
     ### Take back all cards and shuffle the deck
     if (message.content.startswith(self.prefix + 'shuffle') or message.content.startswith(self.prefix + 'reshuffle') or message.content.startswith(self.prefix + 'reset-deck')) and isinstance(message.channel, TextChannel):

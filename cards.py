@@ -74,9 +74,10 @@ cardEmoji = {
 }
 
 class Card:
-  def __init__(self, suit: cardSuits, value: cardValues):
+  def __init__(self, suit: cardSuits, value: cardValues, hidden = False):
     self.suit = suit
     self.value = value
+    self.hidden = hidden
 
   def __hash__(self):
     return self.suit.__hash__ + self.value.__hash__
@@ -87,8 +88,14 @@ class Card:
     return self.suit == eq.suit and self.value == eq.value
 
   def __str__(self):
-    emoji = cardEmoji[self.suit][self.value]    
+    emoji = cardEmoji[self.suit][self.value] if not self.hidden else Deck.get_blank_card()   
     return emoji
+
+  def hide(self):
+    self.hidden = True
+
+  def reveal(self):
+    self.hidden = False
 
   def get_embed(self, member: Member, channel: TextChannel):
     cardDict = {
@@ -192,14 +199,16 @@ class Hand:
       if card.suit == suit and card.value == value:
         return i
 
-  def play_card_number(self, index: int):
+  def play_card_number(self, index: int, facedown = False):
     card = self.cards.pop(index)
+    if facedown:
+      card.hide()
     return card
 
-  def play_card(self, suit: str, value: str):
+  def play_card(self, suit: str, value: str, facedown = False):
     index = self.find_card_index(suit, value)
     if index is not None:
-      return self.play_card_number(index)
+      return self.play_card_number(index, facedown)
 
 class Deck:
   def __init__(self, decks_in_use = 1):

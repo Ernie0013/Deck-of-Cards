@@ -71,12 +71,20 @@ class Util:
           "value": "Show the current hand the player has. Only available in DMs. "
         },
         {
-          "name": "$play-card <number>",
-          "value": "Plays the specified card."
+          "name": "$play-card <number> [facedown]",
+          "value": "Plays the specified card. Add the word `facedown` to play the card facedown."
         },
         {
-          "name": "$play-card <card suit> <card value>",
-          "value": "Plays the specified card."
+          "name": "$play-card <card suit> <card value> [facedown]",
+          "value": "Plays the specified card. Add the word `facedown` to play the card facedown."
+        },
+        {
+          "name": "$play-card <card value> of <card suit> [facedown]",
+          "value": "Plays the specified card. Add the word `facedown` to play the card facedown."
+        },
+        {
+          "name": "$turn-up <reply to a card that is played facedown>",
+          "value": "Turns a facedown card up. Only available to dealers."
         },
         {
           "name": "$deck",
