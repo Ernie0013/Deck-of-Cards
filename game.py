@@ -256,11 +256,11 @@ class Game:
 
     ### Show a blank card
     if message.content.startswith(self.prefix + 'blank'):
-      await message.channel.send(embed = Card.get_blank_card_embed(message.author))
+      await message.channel.send(embed = Card.get_blank_card_embed(message.author, message.channel))
 
     ### OWO
     if message.content.startswith(self.prefix + 'cat'):
-      await message.channel.send(embed = Card.get_cat_embed(message.author))
+      await message.channel.send(embed = Card.get_cat_embed(message.author, message.channel))
     
     ### Show the help information
     if message.content.startswith(self.prefix + 'help'):
